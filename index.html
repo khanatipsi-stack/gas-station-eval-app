@@ -1,83 +1,358 @@
-<script>
-    // 🔗 นำ URL ที่ได้จาก Google Apps Script มาวางตรงนี้
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbz2wchDZFX9Upx7_Pck5c7Yzh5mbXSitVBvkuAFoHLKwg7J4vS6kcNatsd6dZkugqTw/exec";
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบประเมินผู้รับเหมาก่อสร้างสถานีบริการน้ำมัน</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome 6 Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+  <!-- Google Font: Sarabun -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #0f2b48;
+      --secondary-color: #0284c7;
+      --accent-color: #f59e0b;
+      --ai-color: #7c3aed;
+      --bg-light: #f8fafc;
+      --text-dark: #1e293b;
+    }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background-color: var(--bg-light);
+      color: var(--text-dark);
+      padding-bottom: 60px;
+    }
+
+    .navbar-brand-custom {
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .card-custom {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      transition: all 0.2s ease-in-out;
+    }
+
+    .rubric-card {
+      border-left: 5px solid var(--secondary-color);
+      background: #ffffff;
+      border-radius: 8px;
+    }
+
+    .rubric-card.selected {
+      border-left-color: #10b981;
+      background-color: #f0fdf4;
+    }
+
+    .rubric-option {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      background-color: #ffffff;
+    }
+
+    .rubric-option:hover {
+      border-color: var(--secondary-color);
+      background-color: #f0f9ff;
+    }
+
+    .rubric-option.active {
+      border-color: #10b981;
+      background-color: #ecfdf5;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+    }
+
+    .bg-ai-gradient {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+      color: white;
+    }
+    
+    .border-ai {
+      border-color: #8b5cf6 !important;
+    }
+
+    .ai-chat-drawer {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 380px;
+      max-width: 90vw;
+      height: 500px;
+      z-index: 1050;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+
+    .ai-chat-drawer.collapsed {
+      transform: translateY(calc(100% + 40px));
+    }
+
+    .ai-chat-toggle-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1049;
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+      border-radius: 50px;
+    }
+
+    .toast-container-custom {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1090;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-dark mb-4 shadow-sm" style="background-color: var(--primary-color) !important;">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand navbar-brand-custom d-flex align-items-center" href="#">
+        <i class="fa-solid fa-gas-pump fs-4 me-3 text-warning"></i>
+        <div>
+          <span class="fs-5 d-block">ระบบประเมินผู้รับเหมาก่อสร้างสถานีบริการน้ำมัน</span>
+          <small class="fw-normal text-white-50" style="font-size: 0.75rem;">โครงการ Model A, B, C (มูลค่า > 1.0 ล้านบาท)</small>
+        </div>
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light text-dark px-3 py-2 border"><i class="fa-solid fa-database text-success me-1"></i> Google Sheets Connected</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-4">
+    <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="mainTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold px-4" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#dashboard-view" type="button">
+          <i class="fa-solid fa-chart-pie me-2"></i>สถานะโครงการ & รายงาน
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold px-4" id="eval-tab" data-bs-toggle="pill" data-bs-target="#eval-view" type="button">
+          <i class="fa-solid fa-clipboard-check me-2"></i>ทำแบบประเมินผู้รับเหมา
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="mainTabContent">
+
+      <!-- Dashboard View -->
+      <div class="tab-pane fade show active" id="dashboard-view" role="tabpanel">
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-4">
+            <div class="card card-custom p-3 bg-white border-start border-primary border-4">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-muted fs-7 fw-bold">โครงการทั้งหมด</div>
+                  <div class="fs-3 fw-bold text-primary" id="stat-total">0</div>
+                </div>
+                <div class="bg-primary-subtle text-primary p-3 rounded-circle fs-4">
+                  <i class="fa-solid fa-list-check"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card card-custom p-3 bg-white border-start border-success border-4">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-muted fs-7 fw-bold">ประเมินเสร็จสิ้น (ครบ 4 ฝ่าย)</div>
+                  <div class="fs-3 fw-bold text-success" id="stat-completed">0</div>
+                </div>
+                <div class="bg-success-subtle text-success p-3 rounded-circle fs-4">
+                  <i class="fa-solid fa-check-double"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card card-custom p-3 bg-white border-start border-warning border-4">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-muted fs-7 fw-bold">ค้างประเมินบางฝ่าย</div>
+                  <div class="fs-3 fw-bold text-warning" id="stat-pending">0</div>
+                </div>
+                <div class="bg-warning-subtle text-warning p-3 rounded-circle fs-4">
+                  <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evaluation Form View -->
+      <div class="tab-pane fade" id="eval-view" role="tabpanel">
+        <div class="card card-custom p-4 bg-white mb-4">
+          <h5 class="fw-bold text-primary mb-3">
+            <i class="fa-solid fa-pen-to-square me-2"></i>ข้อมูลการประเมินโครงการ
+          </h5>
+          <div class="row g-3">
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label fw-bold">1. ค้นหา & เลือกสาขา:</label>
+              <select class="form-select" id="evalProjectSelect">
+                <option value="">-- กำลังดึงข้อมูลจาก Google Sheet... --</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label fw-bold">2. ฝ่ายผู้ทำการประเมิน:</label>
+              <select class="form-select" id="evalDeptSelect">
+                <option value="1">ฝ่ายวิศวกรรม (Eng) - 75%</option>
+                <option value="2">ฝ่ายจัดซื้อ (Pur) - 10%</option>
+                <option value="3">ฝ่ายความปลอดภัย (Safety) - 5%</option>
+                <option value="4">ฝ่ายบริหารธุรกิจ (BU) - 10%</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label fw-bold">3. ชื่อผู้ประเมิน:</label>
+              <input type="text" id="evaluatorName" class="form-control" placeholder="เช่น สมชาย ใจดี">
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label fw-bold">4. อีเมลผู้ประเมิน:</label>
+              <input type="email" id="evaluatorEmail" class="form-control" placeholder="user@company.com">
+            </div>
+          </div>
+        </div>
+
+        <!-- 12 Rubric Criteria Cards Container -->
+        <div class="card card-custom p-4 bg-white mb-4">
+          <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-list-ol me-2 text-primary"></i>เกณฑ์การประเมิน 12 หัวข้อ (ระดับ 1 - 5)</h5>
+          <div id="rubricCardsContainer" class="d-flex flex-column gap-3"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AI Chat Assistant Drawer -->
+  <button class="btn bg-ai-gradient text-white fw-bold ai-chat-toggle-btn px-4 py-2" onclick="toggleAiChat()">
+    <i class="fa-solid fa-comments me-2"></i>ปรึกษา Gemini AI
+  </button>
+
+  <div class="ai-chat-drawer collapsed" id="aiChatDrawer">
+    <div class="bg-ai-gradient p-3 text-white d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
+        <i class="fa-solid fa-robot fs-5 me-2"></i>
+        <div>
+          <h6 class="fw-bold mb-0">Gemini Construction Advisor</h6>
+          <span class="fs-8 text-white-50">ผู้ช่วยมาตรฐานก่อสร้างปั๊มน้ำมัน</span>
+        </div>
+      </div>
+      <button class="btn-close btn-close-white btn-sm" onclick="toggleAiChat()"></button>
+    </div>
+    <div class="p-3 flex-grow-1 overflow-auto">
+      <div class="bg-light p-2 rounded fs-7 mb-2">
+        สวัสดีครับ! สอบถามเกณฑ์มาตรฐานงานก่อสร้างสถานีบริการน้ำมันได้เลยครับ
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // ⚠️ นำ Web App URL ที่ได้จากการ Deploy ใน Google Apps Script มาใส่ตรงนี้ครับ
+    const GAS_API_URL = "https://script.google.com/macros/s/YOUR_EXEC_ID/exec";
+
+    // ชุดเกณฑ์การประเมิน 12 ข้อ
+    const criteria12 = [
+      { id: 1, title: "1. การบริหารระยะเวลาและแผนงานก่อสร้าง", weight: 12, r1: "ล่าช้า > 30 วัน", r2: "ล่าช้า 15-30 วัน", r3: "ตรงตามแผน", r4: "เสร็จตามแผนงานหลัก", r5: "เสร็จก่อนกำหนด" },
+      { id: 2, title: "2. คุณภาพงานโครงสร้างและอาคารสถานี", weight: 12, r1: "พบ Defect ร้ายแรง", r2: "พบ Defect ปานกลาง", r3: "ถูกต้องตามแบบ", r4: "งานประณีตสมบูรณ์", r5: "คุณภาพสูงมาก" },
+      { id: 3, title: "3. งานติดตั้งระบบท่อน้ำมันใต้ดินและถังเก็บน้ำมัน", weight: 10, r1: "ไม่ผ่าน Pressure Test", r2: "แก้ไขทดสอบหลายครั้ง", r3: "ผ่านเกณฑ์มาตรฐาน", r4: "จัดวางระบบประณีต", r5: "มาตรฐานสากล Safety สูง" },
+      { id: 4, title: "4. งานระบบไฟฟ้า ตู้จ่ายน้ำมัน และระบบสายดิน", weight: 10, r1: "สายดินไม่ผ่านเกณฑ์", r2: "ทำเบอร์สายไฟไม่ครบ", r3: "ปลอดภัยตามมาตรฐาน", r4: "เป็นระเบียบชัดเจน", r5: "ผ่านการตรวจสมบูรณ์แบบ" },
+      { id: 5, title: "5. มาตรฐานความปลอดภัย อาชีวอนามัย (SHE Standards)", weight: 10, r1: "เกิดอุบัติเหตุ LTI", r2: "พบข้อบกพร่องบ่อย", r3: "ปฏิบัติตามกฎพื้นฐาน", r4: "มี Safety Talk ทุกวัน", r5: "Zero Accident" },
+      { id: 6, title: "6. การควบคุมและบริหารผู้รับเหมาช่วง (Sub-contractor)", weight: 6, r1: "ไม่มีวิศวกรควบคุม", r2: "ต้องสั่งแก้ไขซ้ำซ้อน", r3: "คุมงานได้ตามเกณฑ์", r4: "กำกับดูแลอย่างใกล้ชิด", r5: "ทำงานร่วมกันมีประสิทธิภาพ" },
+      { id: 7, title: "7. คุณภาพและการจัดหาวัสดุก่อสร้าง", weight: 8, r1: "ใช้วัสดุไม่ผ่านอนุมัติ", r2: "ส่งวัสดุล่าช้า", r3: "ถูกต้องตาม Spec", r4: "จัดหาได้ตรงตามแผน", r5: "วัสดุเกรดพรีเมียม" },
+      { id: 8, title: "8. ความพร้อม ฝีมือ และวินัยของทีมช่างหน้างาน", weight: 6, r1: "ช่างไม่เพียงพอ/ฝ่าฝืนกฎ", r2: "ฝีมือไม่ได้มาตรฐาน", r3: "ปฏิบัติตามระเบียบ", r4: "ฝีมือประณีตสุภาพ", r5: "ระดับเชี่ยวชาญพิเศษ" },
+      { id: 9, title: "9. การแก้ไขงาน Defect และงานตามข้อสั่งการ", weight: 8, r1: "เพิกเฉยการแก้ไข", r2: "แก้ไขล่าช้า", r3: "แก้ไขครบตามเวลา", r4: "ตอบสนองรวดเร็ว", r5: "ป้องกัน Defect ล่วงหน้า" },
+      { id: 10, title: "10. การจัดทำเอกสาร As-built Drawings และใบอนุญาต", weight: 6, r1: "ไม่จัดทำเอกสาร", r2: "ส่งมอบล่าช้า", r3: "จัดทำถูกต้องตามจริง", r4: "รูปเล่มและ CAD สมบูรณ์", r5: "มืออาชีพครบถ้วน" },
+      { id: 11, title: "11. การบริหารผลกระทบและชุมชนสัมพันธ์", weight: 6, r1: "ได้รับการร้องเรียนรุนแรง", r2: "มาตรการไม่ดีพอ", r3: "ดูแลพื้นที่เรียบร้อย", r4: "ไม่มีข้อร้องเรียน", r5: "ได้รับการชื่นชมจากชุมชน" },
+      { id: 12, title: "12. การบริหารงบประมาณและการเบิกจ่ายตามงวดงาน", weight: 6, r1: "เอกสารไม่ถูกต้อง", r2: "เนื้องานไม่ตรงกับเบิก", r3: "เบิกจ่ายตรงตามงวด", r4: "จัดทำ BOQ เรียบร้อย", r5: "ไม่มีปัญหาข้อโต้แย้ง" }
+    ];
 
     document.addEventListener('DOMContentLoaded', function() {
-      loadDataFromGAS();
       renderRubricCards();
+      fetchProjectsFromGAS();
     });
 
-    // ดึงข้อมูลโครงการจาก Google Sheets ผ่าน Fetch API
-    function loadDataFromGAS() {
-      if (!GAS_API_URL || GAS_API_URL.includes("วาง_WEB_APP_URL")) {
-        console.warn("ยังไม่ได้ใส่ URL ของ Google Apps Script API");
+    // ดึงรายชื่อโครงการจาก Google Sheets API
+    function fetchProjectsFromGAS() {
+      if (!GAS_API_URL || GAS_API_URL.includes("YOUR_EXEC_ID")) {
+        console.warn("ยังไม่ได้ใส่ GAS_API_URL");
         return;
       }
 
       fetch(GAS_API_URL)
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
           if (data.status === 'success' && data.projects) {
-            populateProjectDropdown(data.projects);
-          } else {
-            alert("เกิดข้อผิดพลาดจาก Google Sheet: " + (data.message || "ไม่พบข้อมูล"));
+            populateSelect(data.projects);
           }
         })
-        .catch(err => {
-          console.error("Fetch Error:", err);
-          alert("ไม่สามารถดึงข้อมูลจาก Google Sheets ได้ กรุณาเช็ค CORS หรือ URL API");
-        });
+        .catch(err => console.error("Error fetching data:", err));
     }
 
-    // แสดงผลข้อมูลลงใน Dropdown
-    function populateProjectDropdown(projects) {
-      const selectElem = document.getElementById('evalProjectSelect');
+    function populateSelect(projects) {
+      const select = document.getElementById('evalProjectSelect');
       const statTotal = document.getElementById('stat-total');
-      
-      if (selectElem) {
-        selectElem.innerHTML = '<option value="">-- กรุณาเลือกสาขา --</option>';
-        projects.forEach(prj => {
-          const opt = document.createElement('option');
-          opt.value = prj.id;
-          opt.textContent = `${prj.id} - ${prj.name} (${prj.contractor})`;
-          selectElem.appendChild(opt);
-        });
-      }
+      if (!select) return;
 
-      if (statTotal) {
-        statTotal.textContent = projects.length;
-      }
+      select.innerHTML = '<option value="">-- กรุณาเลือกสาขา --</option>';
+      projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.id} - ${p.name} (${p.contractor})`;
+        select.appendChild(opt);
+      });
+
+      if (statTotal) statTotal.textContent = projects.length;
     }
 
-    // Render การ์ดเกณฑ์ 12 ข้อ
     function renderRubricCards() {
       const container = document.getElementById('rubricCardsContainer');
-      if (!container || typeof criteria12 === 'undefined') return;
-      
+      if (!container) return;
       container.innerHTML = '';
+
       criteria12.forEach(item => {
-        const cardHtml = `
-          <div class="card rubric-card p-3" id="rubric-card-${item.id}">
+        const html = `
+          <div class="card rubric-card p-3" id="card-${item.id}">
             <div class="fw-bold text-primary mb-2">${item.title} (น้ำหนัก ${item.weight}%)</div>
             <div class="row g-2">
-              <div class="col"><div class="rubric-option" onclick="selectScore(${item.id}, 1, this)"><b>1:</b> ${item.r1}</div></div>
-              <div class="col"><div class="rubric-option" onclick="selectScore(${item.id}, 2, this)"><b>2:</b> ${item.r2}</div></div>
-              <div class="col"><div class="rubric-option" onclick="selectScore(${item.id}, 3, this)"><b>3:</b> ${item.r3}</div></div>
-              <div class="col"><div class="rubric-option" onclick="selectScore(${item.id}, 4, this)"><b>4:</b> ${item.r4}</div></div>
-              <div class="col"><div class="rubric-option" onclick="selectScore(${item.id}, 5, this)"><b>5:</b> ${item.r5}</div></div>
+              <div class="col"><div class="rubric-option" onclick="selectRubric(${item.id}, 1, this)"><b>1:</b> ${item.r1}</div></div>
+              <div class="col"><div class="rubric-option" onclick="selectRubric(${item.id}, 2, this)"><b>2:</b> ${item.r2}</div></div>
+              <div class="col"><div class="rubric-option" onclick="selectRubric(${item.id}, 3, this)"><b>3:</b> ${item.r3}</div></div>
+              <div class="col"><div class="rubric-option" onclick="selectRubric(${item.id}, 4, this)"><b>4:</b> ${item.r4}</div></div>
+              <div class="col"><div class="rubric-option" onclick="selectRubric(${item.id}, 5, this)"><b>5:</b> ${item.r5}</div></div>
             </div>
           </div>
         `;
-        container.insertAdjacentHTML('beforeend', cardHtml);
+        container.insertAdjacentHTML('beforeend', html);
       });
     }
 
-    function selectScore(topicId, score, elem) {
-      const parentCard = document.getElementById(`rubric-card-${topicId}`);
-      const options = parentCard.querySelectorAll('.rubric-option');
-      options.forEach(opt => opt.classList.remove('active'));
+    function selectRubric(topicId, score, elem) {
+      const parent = document.getElementById(`card-${topicId}`);
+      parent.querySelectorAll('.rubric-option').forEach(opt => opt.classList.remove('active'));
       elem.classList.add('active');
-      parentCard.classList.add('selected');
+      parent.classList.add('selected');
     }
 
     function toggleAiChat() {
